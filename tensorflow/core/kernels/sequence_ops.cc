@@ -189,4 +189,77 @@ TF_CALL_double(REGISTER_SYCL_KERNEL);
 #undef REGISTER_KERNEL_ALL_NUMS
 #undef REGISTER_KERNEL
 
+template <typename T, typename Tnum>
+class LogSpaceOp : public OpKernel {
+ public:
+  explicit LogSpaceOp(OpKernelConstruction* context) : OpKernel(context) {}
+
+  void Compute(OpKernelContext* context) override {
+    const Tensor& start_in = context->input(0);
+    const Tensor& stop_in = context->input(1);
+    const Tensor& num_in = context->input(2);
+    OP_REQUIRES(context, TensorShapeUtils::IsScalar(start_in.shape()),
+                errors::InvalidArgument("start must be a scalar, not shape ",
+                                        start_in.shape().DebugString()));
+    OP_REQUIRES(context, TensorShapeUtils::IsScalar(stop_in.shape()),
+                errors::InvalidArgument("stop must be a scalar, not shape ",
+                                        stop_in.shape().DebugString()));
+    OP_REQUIRES(context, TensorShapeUtils::IsScalar(num_in.shape()),
+                errors::InvalidArgument("num must be a scalar, not shape ",
+                                        num_in.shape().DebugString()));
+    const T start = start_in.scalar<T>()();
+    const T stop = stop_in.scalar<T>()();
+    const Tnum num = num_in.scalar<Tnum>()();
+    OP_REQUIRES(context, num > 0,
+                errors::InvalidArgument("Requires num > 0: ", num));
+    Tensor* out = nullptr;
+    OP_REQUIRES_OK(context,
+                   context->allocate_output(0, TensorShape({num}), &out));
+    auto flat = out->flat<T>();
+    if (num == 1) {
+      flat(0) = pow(10, start);
+    } else {
+      const T step = (stop - start) / (num - 1);
+      for (Tnum i = 0; i < num; ++i) flat(i) = pow(10, start + step * i);
+    }
+  }
+};
+
+#define REGISTER_KERNEL(DEV, T, Tidx)                       \
+  REGISTER_KERNEL_BUILDER(Name("LogSpace")                  \
+                              .Device(DEV)                  \
+                              .TypeConstraint<T>("T")       \
+                              .TypeConstraint<Tidx>("Tidx") \
+                              .HostMemory("start")          \
+                              .HostMemory("stop")           \
+                              .HostMemory("num")            \
+                              .HostMemory("output"),        \
+                          LogSpaceOp<T, Tidx>);
+
+#define REGISTER_KERNEL_ALL_NUMS(dev, T) \
+  REGISTER_KERNEL(dev, T, int32);        \
+  REGISTER_KERNEL(dev, T, int64)
+
+#define REGISTER_CPU_KERNEL(T) REGISTER_KERNEL_ALL_NUMS(DEVICE_CPU, T)
+TF_CALL_float(REGISTER_CPU_KERNEL);
+TF_CALL_double(REGISTER_CPU_KERNEL);
+
+// NOTE(touts): We register the op on GPU but it still runs on CPU
+// because its inputs and outputs are tagged as HostMemory.
+#define REGISTER_GPU_KERNEL(T) REGISTER_KERNEL_ALL_NUMS(DEVICE_GPU, T)
+TF_CALL_float(REGISTER_GPU_KERNEL);
+TF_CALL_double(REGISTER_GPU_KERNEL);
+#undef REGISTER_GPU_KERNEL
+
+#ifdef TENSORFLOW_USE_SYCL
+#define REGISTER_SYCL_KERNEL(T) REGISTER_KERNEL_ALL_NUMS(DEVICE_SYCL, T)
+TF_CALL_float(REGISTER_SYCL_KERNEL);
+TF_CALL_double(REGISTER_SYCL_KERNEL);
+#undef REGISTER_SYCL_KERNEL
+#endif  // TENSORFLOW_USE_SYCL
+
+#undef REGISTER_CPU_KERNEL
+#undef REGISTER_KERNEL_ALL_NUMS
+#undef REGISTER_KERNEL
+
 }  // namespace tensorflow

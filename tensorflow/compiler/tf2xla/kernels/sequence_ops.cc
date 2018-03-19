@@ -14,6 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 // XLA-specific sequence and range Ops.
+#include <cmath>
 
 #include "tensorflow/compiler/tf2xla/xla_helpers.h"
 #include "tensorflow/compiler/tf2xla/xla_op_kernel.h"
@@ -216,6 +217,79 @@ REGISTER_XLA_OP(Name("LinSpace")
                     .CompileTimeConstInput("stop")
                     .CompileTimeConstInput("num"),
                 LinSpaceOp);
+
+class LogSpaceOp : public XlaOpKernel {
+ public:
+  explicit LogSpaceOp(OpKernelConstruction* ctx) : XlaOpKernel(ctx) {}
+
+  void Compile(XlaOpKernelContext* ctx) override {
+    const TensorShape start_in_shape = ctx->InputShape(0);
+    const TensorShape stop_in_shape = ctx->InputShape(1);
+    const TensorShape num_in_shape = ctx->InputShape(2);
+    OP_REQUIRES(ctx, TensorShapeUtils::IsScalar(start_in_shape),
+                errors::InvalidArgument("start must be a scalar, not shape ",
+                                        start_in_shape.DebugString()));
+    OP_REQUIRES(ctx, TensorShapeUtils::IsScalar(stop_in_shape),
+                errors::InvalidArgument("stop must be a scalar, not shape ",
+                                        stop_in_shape.DebugString()));
+    OP_REQUIRES(ctx, TensorShapeUtils::IsScalar(num_in_shape),
+                errors::InvalidArgument("num must be a scalar, not shape ",
+                                        num_in_shape.DebugString()));
+
+    DataType type = ctx->input_type(0);
+
+    int64 num;
+    OP_REQUIRES_OK(ctx, GetIntValue(2, ctx, &num));
+    OP_REQUIRES(ctx, num > 0,
+                errors::InvalidArgument("Requires num > 0: ", num));
+    Tensor out_constant(type, TensorShape({num}));
+
+    switch (type) {
+      case DT_FLOAT: {
+        float start, stop;
+        OP_REQUIRES_OK(ctx, GetValue(0, ctx, &start));
+        OP_REQUIRES_OK(ctx, GetValue(1, ctx, &stop));
+        auto flat = out_constant.flat<float>();
+        if (num == 1) {
+          flat(0) = pow(10, start);
+        } else {
+          const float step = (stop - start) / (num - 1);
+          for (int64 i = 0; i < num; ++i) {
+            flat(i) = pow(10, start + step * i);
+          }
+        }
+        break;
+      }
+      case DT_DOUBLE: {
+        double start, stop;
+        OP_REQUIRES_OK(ctx, GetValue(0, ctx, &start));
+        OP_REQUIRES_OK(ctx, GetValue(1, ctx, &stop));
+        auto flat = out_constant.flat<double>();
+        if (num == 1) {
+          flat(0) = pow(10, start);
+        } else {
+          const double step = (stop - start) / (num - 1);
+          for (int64 i = 0; i < num; ++i) {
+            flat(i) = pow(10, start + step * i);
+          }
+        }
+        break;
+      }
+
+      default:
+        ctx->SetStatus(errors::InvalidArgument("Invalid argument type ",
+                                               DataTypeString(type)));
+        return;
+    }
+    ctx->SetConstantOutput(0, out_constant);
+  }
+};
+
+REGISTER_XLA_OP(Name("LogSpace")
+                    .CompileTimeConstInput("start")
+                    .CompileTimeConstInput("stop")
+                    .CompileTimeConstInput("num"),
+                LogSpaceOp);
 
 }  // namespace
 }  // namespace tensorflow

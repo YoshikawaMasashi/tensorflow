@@ -1,0 +1,9 @@
+op {
+  graph_op_name: "LogSpace"
+  endpoint {
+    name: "log_space"
+  }
+  endpoint {
+    name: "logspace"
+  }
+}

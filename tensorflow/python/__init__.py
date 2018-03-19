@@ -205,6 +205,7 @@ _allowed_symbols.extend([
     'create_partitioned_variables',
     'deserialize_many_sparse',
     'lin_space',
+    'log_space',
     'listdiff',  # Use tf.listdiff instead.
     'parse_single_sequence_example',
     'serialize_many_sparse',

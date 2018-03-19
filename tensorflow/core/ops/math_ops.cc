@@ -1280,6 +1280,38 @@ REGISTER_OP("LinSpace")
       return Status::OK();
     });
 
+REGISTER_OP("LogSpace")
+    .Input("start: T")
+    .Input("stop: T")
+    .Input("num: Tidx")
+    .Output("output: T")
+    .Attr("T: {bfloat16, float, double}")
+    .Attr("Tidx: {int32, int64} = DT_INT32")
+    .SetShapeFn([](InferenceContext* c) {
+      ShapeHandle unused;
+      TF_RETURN_WITH_CONTEXT_IF_ERROR(c->WithRank(c->input(0), 0, &unused),
+                                      " for 'start'");
+      TF_RETURN_WITH_CONTEXT_IF_ERROR(c->WithRank(c->input(1), 0, &unused),
+                                      " for 'stop'");
+      TF_RETURN_WITH_CONTEXT_IF_ERROR(c->WithRank(c->input(2), 0, &unused),
+                                      " for 'num'");
+      const Tensor* num_t = c->input_tensor(2);
+      if (num_t == nullptr) {
+        c->set_output(0, c->Vector(InferenceContext::kUnknownDim));
+        return Status::OK();
+      }
+
+      int64 num;
+      if (num_t->dtype() == DT_INT32) {
+        num = num_t->scalar<int32>()();
+      } else {
+        num = num_t->scalar<int64>()();
+      }
+      if (num <= 0) return errors::InvalidArgument("Requires num > 0: ", num);
+      c->set_output(0, c->Vector(num));
+      return Status::OK();
+    });
+
 REGISTER_OP("Complex")
     .Input("real: T")
     .Input("imag: T")

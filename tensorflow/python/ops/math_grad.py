@@ -1174,6 +1174,7 @@ def _BatchMatMul(op, grad):
 
 ops.NotDifferentiable("Range")
 ops.NotDifferentiable("LinSpace")
+ops.NotDifferentiable("LogSpace")
 
 
 @ops.RegisterGradient("Complex")

@@ -138,6 +138,7 @@ _allowed_symbols_math_ops = [
     "arg_max",
     "arg_min",
     "lin_space",
+    "log_space",
     "sparse_matmul",  # Use tf.matmul.
     # Deprecated (see versions.h):
     "batch_fft",

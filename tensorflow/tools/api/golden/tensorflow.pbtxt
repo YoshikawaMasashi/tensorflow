@@ -1317,6 +1317,14 @@ tf_module {
     argspec: "args=[\'x\', \'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
   }
   member_method {
+    name: "log_space"
+    argspec: "args=[\'start\', \'stop\', \'num\', \'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
+  }
+  member_method {
+    name: "logspace"
+    argspec: "args=[\'start\', \'stop\', \'num\', \'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
+  }
+  member_method {
     name: "logical_and"
     argspec: "args=[\'x\', \'y\', \'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
   }
